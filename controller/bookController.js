@@ -2,41 +2,45 @@ const conn = require('../mariadb')
 const {StatusCodes} = require('http-status-codes');
 
 const viewAll = (req, res) => {
-    const {category_id} = req.query;
+    const {category_id, newBook, limit, currentPage} = req.query;
 
-    if (category_id) {
-        let sql = 'SELECT * FROM books WHERE category_id = ?';
-        conn.query(sql, category_id, 
-            (err, results) => {
-                if (err) {
-                    console.log(err);
-                    return res.status(StatusCodes.BAD_REQUEST).end();
-                }
-    
-                if (results.length) {
-                    return res.status(StatusCodes.OK).json(results);
-                } else {
-                    return res.status(StatusCodes.NOT_FOUND).end();
-                }            
-        });
-    } else {
-        let sql = 'SELECT * FROM books';
-        conn.query(sql, 
-            (err, results) => {
-                if (err) {
-                    console.log(err);
-                    return res.status(StatusCodes.BAD_REQUEST).end();
-                }
-    
+    let offset = limit*(currentPage - 1);
+
+    let sql = 'SELECT * FROM books';
+    let values = [];
+
+    if (category_id && newBook) {
+        sql += ' WHERE category_id = ? AND pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+        values.push(category_id);
+    } else if (category_id) {
+        sql += ' WHERE category_id = ?';
+        values.push(category_id);
+    } else if (newBook) {
+        sql += ' WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()';
+    }
+
+    sql += ' LIMIT ? OFFSET ?';
+    values.push(parseInt(limit), offset);
+
+    conn.query(sql, values, 
+        (err, results) => {
+            if (err) {
+                console.log(err);
+                return res.status(StatusCodes.BAD_REQUEST).end();
+            }
+
+            if (results.length) {
                 return res.status(StatusCodes.OK).json(results);
-        });
-    }    
+            } else {
+                return res.status(StatusCodes.NOT_FOUND).end();
+            }            
+    });
 };
 
 const viewDetail = (req, res) => {
     const {id} = req.params;
 
-    let sql = 'SELECT * FROM books WHERE id = ?';
+    let sql = 'SELECT * FROM books LEFT JOIN categories ON books.category_id = categories.id WHERE books.id = ?';
     conn.query(sql, id, 
         (err, results) => {
             if (err) {
