@@ -6,7 +6,7 @@ const viewAll = (req, res) => {
 
     let offset = limit*(currentPage - 1);
 
-    let sql = 'SELECT * FROM books';
+    let sql = 'SELECT *, (SELECT COUNT(*) FROM likes WHERE books.id = liked_book_id) AS likes FROM books';
     let values = [];
 
     if (category_id && newBook) {
@@ -38,10 +38,18 @@ const viewAll = (req, res) => {
 };
 
 const viewDetail = (req, res) => {
-    const {id} = req.params;
+    const {user_id} = req.body;
+    const book_id = req.params.id;
 
-    let sql = 'SELECT * FROM books LEFT JOIN categories ON books.category_id = categories.id WHERE books.id = ?';
-    conn.query(sql, id, 
+    let sql = `SELECT *,
+                    (SELECT COUNT(*) FROM likes WHERE liked_book_id = books.id) AS likes,
+                    (SELECT EXISTS (SELECT * FROM likes WHERE user_id = ? AND liked_book_id = ?)) AS liked
+                FROM books
+                LEFT JOIN categories
+                ON books.category_id = categories.category_id
+                WHERE books.id = ?;`;
+    let values = [user_id, book_id, book_id]
+    conn.query(sql, values, 
         (err, results) => {
             if (err) {
                 console.log(err);
