@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const {
-    viewAll,
-    viewDetail
+    getAll,
+    getDetail
 } = require('../controller/bookController');
 
 router.use(express.json());
 
-router.get('/', viewAll);
-router.get('/:id', viewDetail);
+router.get('/', getAll);
+router.get('/:id', getDetail);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 const conn = require('../mariadb')
 const {StatusCodes} = require('http-status-codes');
 
-const viewAll = (req, res) => {
+const getAll = (req, res) => {
     const {category_id, newBook, limit, currentPage} = req.query;
 
     let offset = limit*(currentPage - 1);
@@ -37,7 +37,7 @@ const viewAll = (req, res) => {
     });
 };
 
-const viewDetail = (req, res) => {
+const getDetail = (req, res) => {
     const {user_id} = req.body;
     const book_id = req.params.id;
 
@@ -65,6 +65,6 @@ const viewDetail = (req, res) => {
 };
 
 module.exports = {
-    viewAll,
-    viewDetail
+    getAll,
+    getDetail
 };
