@@ -12,54 +12,74 @@ const order = async (req, res) => {
 
     const {items, delivery, total_quantity, total_price, user_id, first_book_title} = req.body;
 
-    let delivery_id, order_id;
-
     let sql = `INSERT INTO delivery (address, receiver, contact) VALUES (?, ?, ?);`;
-
     let values = [delivery.address, delivery.receiver, delivery.contact];
-    let [results] = await conn.query(sql, values);
+    let [results] = await conn.execute(sql, values);
+    let delivery_id = results.insertId;
 
-    console.log(results);
+    sql = `INSERT INTO orders (book_title, total_quantity, total_price, user_id, delivery_id)
+            VALUES (?, ?, ?, ?, ?);`;
+    values = [first_book_title, total_quantity, total_price, user_id, delivery_id];
+    [results] = await conn.execute(sql, values);
+    let order_id = results.insertId;
 
-    // sql = `INSERT INTO orders (book_title, total_quantity, total_price, user_id, delivery_id)
-    //         VALUES (?, ?, ?, ?, ?);`;
-    // values = [first_book_title, total_quantity, total_price, user_id, delivery_id]
+    sql = `SELECT book_id, quantity FROM cartItems WHERE id IN (?);`;
+    let [orderItems, fields] = await conn.query(sql, [items]);
 
-    // conn.query(sql, values,
-    //     (err, results) => {
-    //         if (err) {
-    //             console.log(err);
-    //             return res.status(StatusCodes.BAD_REQUEST).end();
-    //         }
+    sql = `INSERT INTO orderedBook (order_id, book_id, quantity)
+            VALUES ?;`;  
+    values = [];
+    orderItems.forEach((item) => {
+        values.push([order_id, item.book_id, item.quantity]);
+    }) 
+    results = await conn.query(sql, [values]);
 
-    //         order_id = results.insertId;
-    // });
-
-    // sql = `INSERT INTO orderedBook (order_id, book_id, quantity)
-    //         VALUES ?;`;
-    
-    // values = [];
-    // items.forEach((item) => {
-    //     values.push([order_id, item.book_id, item.quantity]);
-    // })
-    
-    // conn.query(sql, [values],
-    //     (err, results) => {
-    //         if (err) {
-    //             console.log(err);
-    //             return res.status(StatusCodes.BAD_REQUEST).end();
-    //         }
-
-    //         return res.status(StatusCodes.OK).json(results);
-    // });
+    let result = await deleteCartItems(conn, items);
+    return res.status(StatusCodes.OK).json(result);
 };
 
-const getOrders = (req, res) => {
-    res.json('주문 목록 조회');
+const deleteCartItems = async (conn, items) => {
+    let sql = `DELETE FROM cartItems WHERE id IN (?);`;
+
+    let result = await conn.query(sql, [items]);
+    return result;
+}
+
+const getOrders = async (req, res) => {
+    const conn = await mariadb.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'root',
+        database: 'Bookshop',
+        dateStrings: true
+    });
+    
+    const {user_id} = req.body;
+
+    let sql = `SELECT orders.id, created_at, address, receiver, contact, book_title, total_quantity, total_price
+    FROM orders LEFT JOIN delivery
+    ON orders.delivery_id = delivery.id;`;
+    let [rows, fields] = await conn.query(sql);
+    return res.status(StatusCodes.OK).json(rows);
 };
 
-const getOrderDetail = (req, res) => {
-    res.json('주문 상세 상품 조회');
+const getOrderDetail = async (req, res) => {
+    const conn = await mariadb.createConnection({
+        host: 'localhost',
+        user: 'root',
+        password: 'root',
+        database: 'Bookshop',
+        dateStrings: true
+    });
+    
+    const {id} = req.params;
+
+    let sql = `SELECT book_id, title, author, price, quantity
+    FROM orderedBook LEFT JOIN books
+    ON orderedBook.book_id = books.id
+    WHERE order_id = ?;`;
+    let [rows, fields] = await conn.query(sql, [id]);
+    return res.status(StatusCodes.OK).json(rows);
 };
 
 module.exports = {
