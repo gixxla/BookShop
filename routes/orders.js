@@ -9,9 +9,7 @@ const {
 router.use(express.json());
 
 router.post('/', order);
-
 router.get('/', getOrders);
-
 router.get('/:id', getOrderDetail);
 
 module.exports = router;

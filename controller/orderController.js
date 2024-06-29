@@ -35,13 +35,14 @@ const order = async (req, res) => {
     results = await conn.query(sql, [values]);
 
     let result = await deleteCartItems(conn, items);
+    
     return res.status(StatusCodes.OK).json(result);
 };
 
 const deleteCartItems = async (conn, items) => {
     let sql = `DELETE FROM cartItems WHERE id IN (?);`;
-
     let result = await conn.query(sql, [items]);
+
     return result;
 }
 
@@ -58,8 +59,10 @@ const getOrders = async (req, res) => {
 
     let sql = `SELECT orders.id, created_at, address, receiver, contact, book_title, total_quantity, total_price
     FROM orders LEFT JOIN delivery
-    ON orders.delivery_id = delivery.id;`;
-    let [rows, fields] = await conn.query(sql);
+    ON orders.delivery_id = delivery.id
+    WHERE user_id = ?;`;
+    let [rows, fields] = await conn.query(sql, user_id);
+
     return res.status(StatusCodes.OK).json(rows);
 };
 
@@ -79,6 +82,7 @@ const getOrderDetail = async (req, res) => {
     ON orderedBook.book_id = books.id
     WHERE order_id = ?;`;
     let [rows, fields] = await conn.query(sql, [id]);
+
     return res.status(StatusCodes.OK).json(rows);
 };
 
