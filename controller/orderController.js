@@ -12,7 +12,7 @@ const order = async (req, res) => {
         dateStrings: true
     });
 
-    const {items, delivery, total_quantity, total_price, user_id, first_book_title} = req.body;
+    const {items, delivery, totalQuantity, totalPrice, firstBookTitle} = req.body;
     const auth = ensureAuthorization(req);
 
     if (auth instanceof jwt.TokenExpiredError) {
@@ -27,13 +27,13 @@ const order = async (req, res) => {
         let sql = `INSERT INTO delivery (address, receiver, contact) VALUES (?, ?, ?);`;
         let values = [delivery.address, delivery.receiver, delivery.contact];
         let [results] = await conn.execute(sql, values);
-        let delivery_id = results.insertId;
+        let deliveryId = results.insertId;
 
         sql = `INSERT INTO orders (book_title, total_quantity, total_price, user_id, delivery_id)
                 VALUES (?, ?, ?, ?, ?);`;
-        values = [first_book_title, total_quantity, total_price, auth.id, delivery_id];
+        values = [firstBookTitle, totalQuantity, totalPrice, auth.id, deliveryId];
         [results] = await conn.execute(sql, values);
-        let order_id = results.insertId;
+        let orderId = results.insertId;
 
         sql = `SELECT book_id, quantity FROM cartItems WHERE id IN (?);`;
         let [orderItems, fields] = await conn.query(sql, [items]);
@@ -42,7 +42,7 @@ const order = async (req, res) => {
                 VALUES ?;`;  
         values = [];
         orderItems.forEach((item) => {
-            values.push([order_id, item.book_id, item.quantity]);
+            values.push([orderId, item.book_id, item.quantity]);
         }) 
         results = await conn.query(sql, [values]);
 
@@ -84,6 +84,18 @@ const getOrders = async (req, res) => {
         ON orders.delivery_id = delivery.id
         WHERE user_id = ?;`;
         let [rows, fields] = await conn.query(sql, auth.id);
+
+        rows.map(row => {
+            row.createdAt = row.created_at;
+            row.bookTitle = row.book_title;
+            row.totalQuantity = row.total_quantity;
+            row.totalPrice = row.total_price;
+
+            delete row.created_at;
+            delete row.book_title;
+            delete row.total_quantity;
+            delete row.total_price;
+        })
     
         return res.status(StatusCodes.OK).json(rows);
     }
@@ -116,6 +128,11 @@ const getOrderDetail = async (req, res) => {
         ON orderedBook.book_id = books.id
         WHERE order_id = ?;`;
         let [rows, fields] = await conn.query(sql, [orderId]);
+
+        rows.map(row => {
+            row.bookId = row.book_id;
+            delete row.book_id;
+        })
     
         return res.status(StatusCodes.OK).json(rows);
     }

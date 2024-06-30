@@ -4,7 +4,7 @@ const ensureAuthorization = require('../auth');
 const jwt = require('jsonwebtoken');
 
 const addToCart = (req, res) => {
-    const {book_id, quantity} = req.body;
+    const {bookId, quantity} = req.body;
     const auth = ensureAuthorization(req);
 
     if (auth instanceof jwt.TokenExpiredError) {
@@ -17,7 +17,7 @@ const addToCart = (req, res) => {
         });
     } else {
         let sql = `INSERT INTO cartItems (book_id, quantity, user_id) VALUES (?, ?, ?);`;
-        let values = [book_id, quantity, auth.id];
+        let values = [bookId, quantity, auth.id];
         conn.query(sql, values,
             (err, results) => {
                 if (err) {
@@ -60,6 +60,10 @@ const getCartItems = (req, res) => {
                     return res.status(StatusCodes.BAD_REQUEST).end();
                 }
 
+                results.map(result => {
+                    result.bookId = result.book_id;
+                    delete result.book_id;
+                })
                 return res.status(StatusCodes.OK).json(results);
         });
     }    
