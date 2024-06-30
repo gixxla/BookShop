@@ -1,8 +1,7 @@
 const conn = require('../mariadb')
 const {StatusCodes} = require('http-status-codes');
+const ensureAuthorization = require('../auth');
 const jwt = require('jsonwebtoken');
-const dotenv = require('dotenv');
-dotenv.config();
 
 const addToCart = (req, res) => {
     const {book_id, quantity} = req.body;
@@ -28,8 +27,7 @@ const addToCart = (req, res) => {
     
                 return res.status(StatusCodes.OK).json(results);
         });
-    }
-    
+    }    
 };
 
 const getCartItems = (req, res) => {
@@ -46,9 +44,15 @@ const getCartItems = (req, res) => {
         });
     } else {
         let sql = `SELECT cartItems.id, book_id, title, summary, quantity, price
-                FROM cartItems LEFT JOIN books ON cartItems.book_id = books.id
-                WHERE user_id = ? AND cartItems.id IN (?);`;
-        let values = [auth.id, selected];
+        FROM cartItems LEFT JOIN books ON cartItems.book_id = books.id
+        WHERE user_id = ?`;
+        let values = [auth.id];
+
+        if (selected) {
+            sql += ` AND cartItems.id IN (?);`;
+            values.push(selected);
+        }        
+        
         conn.query(sql, values,
             (err, results) => {
                 if (err) {
@@ -75,23 +79,6 @@ const removeCartItem = (req, res) => {
             return res.status(StatusCodes.OK).json(results);
     });
 };
-
-function ensureAuthorization(req) {
-    try {
-        let auth = req.headers['authorization'];
-        console.log("received jwt : ", auth);
-
-        let decodedUserData = jwt.verify(auth, process.env.PRIVATE_KEY)
-        console.log(decodedUserData);
-
-        return decodedUserData;
-    } catch (err) {
-        console.log(err.name);
-        console.log(err.message);
-
-        return err;
-    }
-}
 
 module.exports = {
     addToCart,
